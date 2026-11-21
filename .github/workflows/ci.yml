@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The workflow only reads the repository. It uses no secrets, so a pull
+# request from a fork runs the same checks with nothing to steal.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: false # there is no go.sum: the module has no dependencies
+      - name: Format
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./... -race -cover
+      - name: Reproducible build
+        run: |
+          make build BINARY=first && make build BINARY=second
+          cmp first second
+      - name: Scan this repository with itself
+        # The scanners' own test fixtures and the demo page are full of
+        # made-up models and keys, so they are left out.
+        run: >
+          ./first scan -repo . -fail-on high
+          -exclude 'internal/aibom/repo/*_test.go'
+          -exclude 'internal/aibom/kube/*_test.go'
+          -exclude 'cmd/pinaka/*_test.go'
+          -exclude docs
