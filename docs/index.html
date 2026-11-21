@@ -6,110 +6,224 @@
   <!-- Nothing is loaded from anywhere else, and a bill you open stays in this tab. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
-  <title>Pinaka: what AI are you running?</title>
-  <meta name="description" content="Pinaka reads a repository or a Kubernetes cluster and writes an AI bill of materials: every model, library, provider and agent tool, where it was seen, and what deserves a look.">
+  <meta name="color-scheme" content="dark">
+  <title>Pinaka: an AI bill of materials for your code and clusters</title>
+  <meta name="description" content="Pinaka scans a repository or a Kubernetes cluster and inventories every model, AI library, hosted provider, model server and agent tool, where each was seen, and which deserve a look first.">
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <a class="skip" href="#bill">Skip to the bill</a>
+  <a class="skip-link" href="#bill">Skip to the bill of materials</a>
 
-  <header class="masthead">
-    <p class="mark" aria-hidden="true">PINAKA</p>
-    <nav aria-label="Page">
-      <a href="#bill">The bill</a>
-      <a href="#how">How it runs</a>
-      <a href="https://github.com/dhruv29/Pinaka" rel="noopener">Source</a>
-    </nav>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#top" aria-label="Pinaka, top of page">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 2 21 7v10l-9 5-9-5V7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M12 12v10M3 7l9 5 9-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+        <span>Pinaka</span>
+      </a>
+      <nav class="topnav" aria-label="Main">
+        <a href="#bill">Sample bill</a>
+        <a href="#how">How it runs</a>
+        <a class="topnav-cta" href="https://github.com/dhruv29/Pinaka" rel="noopener">GitHub</a>
+      </nav>
+    </div>
   </header>
 
-  <main>
-    <section class="lede" aria-labelledby="lede-heading">
-      <p class="kicker">AI bill of materials</p>
-      <h1 id="lede-heading">What AI are you <em>actually</em> running?</h1>
-      <p class="standfirst">
-        Pinaka reads a repository or a live Kubernetes cluster and writes down every model,
-        AI library, hosted provider, model server and agent tool it finds, with the file or
-        workload it was seen in and the handful that deserve a look first.
-      </p>
-      <pre class="command" aria-label="Example command"><code>pinaka scan -repo . -kube -format json -out ai-bom.json</code></pre>
-      <p class="aside">
-        Below is a sample bill for a made-up company, in the exact format Pinaka writes. Drop your own
-        <code>ai-bom.json</code> anywhere on this page to read it here instead; the file
-        is opened in your browser and goes nowhere.
-      </p>
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>Open-source AI bill of materials</p>
+          <h1 id="hero-heading">Answer <span class="hl">&ldquo;what AI are we running?&rdquo;</span> with a list, not a guess.</h1>
+          <p class="hero-lede">
+            Pinaka reads a code repository or a running Kubernetes cluster and inventories every model,
+            AI library, hosted provider, model server, vector store, agent tool, GPU and AI credential it
+            finds, with where each one was seen and which ones to look at first.
+          </p>
+          <div class="command">
+            <span class="command-prompt" aria-hidden="true">$</span>
+            <code id="command-text">pinaka scan -repo . -kube -format json -out ai-bom.json</code>
+            <button id="copy" class="command-copy" type="button">Copy</button>
+          </div>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#bill">View the sample bill</a>
+            <a class="btn btn-ghost" href="https://github.com/dhruv29/Pinaka" rel="noopener">Source on GitHub</a>
+          </div>
+          <ul class="facts" aria-label="Facts">
+            <li>Single binary, no dependencies</li>
+            <li>Read-only</li>
+            <li>Report, JSON or CycloneDX 1.6</li>
+          </ul>
+        </div>
+
+        <figure class="flow" aria-labelledby="flow-caption">
+          <figcaption id="flow-caption" class="flow-caption">One scan, two sources, one inventory</figcaption>
+          <ol class="flow-inputs">
+            <li class="flow-node">
+              <span class="flow-tag">Code</span>
+              <strong>Repository</strong>
+              <span class="flow-sub">Dependencies, model files, config, agent tooling. No network calls.</span>
+            </li>
+            <li class="flow-node">
+              <span class="flow-tag flow-tag-cluster">Cluster</span>
+              <strong>Kubernetes</strong>
+              <span class="flow-sub"><code>kubectl get</code> only, or saved <code>-o json</code> output.</span>
+            </li>
+          </ol>
+          <div class="flow-core" aria-hidden="true"><span>pinaka scan</span></div>
+          <ol class="flow-outputs">
+            <li><span class="flow-ext">txt</span>Report for people</li>
+            <li><span class="flow-ext">json</span>Pinaka JSON</li>
+            <li><span class="flow-ext">cdx</span>CycloneDX 1.6</li>
+          </ol>
+        </figure>
+      </div>
     </section>
 
-    <section id="bill" class="bill" aria-labelledby="bill-heading">
-      <header class="bill-head">
-        <div>
-          <p class="kicker">Bill for</p>
+    <section id="bill" class="console" aria-labelledby="bill-heading">
+      <header class="console-bar">
+        <div class="console-title">
+          <p class="crumb"><span>ai-bom</span><span aria-hidden="true">/</span><span id="source-badge" class="badge">Sample</span></p>
           <h2 id="bill-heading">Loading</h2>
         </div>
-        <div class="bill-actions">
-          <label class="button" for="file">Open a bill</label>
+        <div class="console-actions">
+          <label class="btn btn-small btn-primary" for="file">Open your ai-bom.json</label>
           <input id="file" class="visually-hidden" type="file" accept="application/json,.json">
-          <button id="reset" class="button quiet" type="button" hidden>Back to the sample</button>
+          <button id="reset" class="btn btn-small btn-ghost" type="button" hidden>Back to the sample</button>
         </div>
       </header>
+      <p class="console-hint">A made-up company, in the exact format Pinaka writes. Open or drop your own bill anywhere on this page: it is read in this tab and sent nowhere.</p>
       <p id="status" class="status" role="status" aria-live="polite"></p>
 
-      <dl id="tally" class="tally" aria-label="Summary"></dl>
+      <dl id="tally" class="tiles" aria-label="Summary"></dl>
 
-      <section class="first" aria-labelledby="first-heading">
-        <h3 id="first-heading">Look at these first</h3>
-        <p class="note">Each is an observation with its reason, not a proven vulnerability.</p>
-        <ol id="risks" class="risks"></ol>
-      </section>
+      <div class="console-grid">
+        <section class="panel queue" aria-labelledby="queue-heading">
+          <header class="panel-head">
+            <h3 id="queue-heading">Look at these first</h3>
+            <p class="panel-note">Observations with a reason, sorted by severity. Not proven vulnerabilities.</p>
+          </header>
+          <ol id="risks" class="risk-list"></ol>
+        </section>
 
-      <section class="inventory" aria-labelledby="inventory-heading">
-        <div class="inventory-head">
-          <h3 id="inventory-heading">Everything found</h3>
-          <div class="filters" role="group" aria-label="Show components from">
-            <button type="button" class="chip" data-origin="all" aria-pressed="true">All</button>
-            <button type="button" class="chip" data-origin="repo" aria-pressed="false">Code</button>
-            <button type="button" class="chip" data-origin="cluster" aria-pressed="false">Cluster</button>
-          </div>
+        <div class="side">
+          <section class="panel" aria-labelledby="where-heading">
+            <header class="panel-head"><h3 id="where-heading">Where AI lives</h3></header>
+            <div id="where"></div>
+          </section>
+          <section class="panel" aria-labelledby="kinds-heading">
+            <header class="panel-head">
+              <h3 id="kinds-heading">By kind</h3>
+              <p class="panel-note">Select a kind to filter the inventory.</p>
+            </header>
+            <ul id="kinds" class="kind-bars"></ul>
+          </section>
         </div>
-        <div id="sections"></div>
+      </div>
+
+      <section id="stack-map" class="panel stackmap" aria-labelledby="map-heading">
+        <header class="panel-head map-head">
+          <div>
+            <h3 id="map-heading">Stack map</h3>
+            <p id="map-note" class="panel-note">Each box is a component in its layer. A line joins two components that were seen in the same place; it shows what sits side by side, not what depends on what.</p>
+          </div>
+          <ul class="map-legend" aria-label="Legend">
+            <li><span class="key key-code" aria-hidden="true"></span>Code</li>
+            <li><span class="key key-cluster" aria-hidden="true"></span>Cluster</li>
+            <li><span class="key key-sev" aria-hidden="true"></span>Flagged (colour is severity)</li>
+            <li><span class="key key-line" aria-hidden="true"></span>Seen together: same file or workload</li>
+            <li><span class="key key-dash" aria-hidden="true"></span>Seen together: same service folder</li>
+          </ul>
+        </header>
+        <div class="map-layout">
+          <div class="map-scroll" id="map-canvas"></div>
+          <div id="map-detail" class="map-detail" aria-live="polite"></div>
+        </div>
+        <p id="map-caps" class="panel-note map-caps"></p>
+        <div class="visually-hidden">
+          <h4>Stack map as text</h4>
+          <ul id="map-text"></ul>
+        </div>
       </section>
 
-      <section class="gaps" aria-labelledby="gaps-heading" id="gaps-section" hidden>
-        <h3 id="gaps-heading">Not examined</h3>
-        <p class="note">Pinaka says what it could not see, so a gap is never read as an absence.</p>
-        <ul id="gaps"></ul>
+      <section class="panel inventory" aria-labelledby="inventory-heading">
+        <header class="panel-head inventory-head">
+          <h3 id="inventory-heading">Inventory</h3>
+          <p id="shown" class="panel-note" aria-live="polite"></p>
+        </header>
+        <div class="toolbar">
+          <label class="search">
+            <span class="visually-hidden">Search the inventory</span>
+            <input id="query" type="search" placeholder="Search names, files, workloads" autocomplete="off" spellcheck="false">
+          </label>
+          <div class="segmented" role="group" aria-label="Found in">
+            <button type="button" class="seg" data-origin="all" aria-pressed="true">All</button>
+            <button type="button" class="seg" data-origin="repo" aria-pressed="false">Code</button>
+            <button type="button" class="seg" data-origin="cluster" aria-pressed="false">Cluster</button>
+          </div>
+          <label class="select">
+            <span class="visually-hidden">Severity</span>
+            <select id="severity">
+              <option value="any">Any severity</option>
+              <option value="flagged">Flagged only</option>
+              <option value="high">High or worse</option>
+              <option value="critical">Critical only</option>
+            </select>
+          </label>
+        </div>
+        <div id="groups" class="groups"></div>
+      </section>
+
+      <section id="gaps-section" class="panel gaps" aria-labelledby="gaps-heading" hidden>
+        <header class="panel-head">
+          <h3 id="gaps-heading">Not examined</h3>
+          <p class="panel-note">Pinaka says what it could not see, so a gap is never read as an absence.</p>
+        </header>
+        <ul id="gaps" class="gap-list"></ul>
       </section>
     </section>
 
     <section id="how" class="how" aria-labelledby="how-heading">
-      <h2 id="how-heading">How it runs</h2>
-      <ol class="steps">
+      <div class="how-intro">
+        <p class="eyebrow">How it runs</p>
+        <h2 id="how-heading">Built to be allowed near production.</h2>
+        <p>One small program you run on a laptop, in a pipeline or as a nightly job. It asks for as little access as an inventory can.</p>
+      </div>
+      <ol class="principles">
         <li>
           <h3>Nothing goes inside your containers</h3>
-          <p>Pinaka is one small program. Run it on a laptop, in a pipeline, or as a nightly job.</p>
+          <p>No agent, no sidecar, nothing installed in a workload. A single binary with no dependencies.</p>
         </li>
         <li>
           <h3>It only reads</h3>
-          <p>A repository scan opens files and makes no network calls. A cluster scan uses only <code>kubectl get</code> and never asks for secrets.</p>
+          <p>A repository scan opens files and makes no network calls. A cluster scan uses only <code>kubectl get</code> and never requests secrets. Teams that will not grant cluster access can hand over saved <code>kubectl get -o json</code> output instead.</p>
         </li>
         <li>
           <h3>Credentials by name, never value</h3>
-          <p>It tells you that <code>OPENAI_API_KEY</code> is written into a workload in plain text. It does not copy the key.</p>
+          <p>It reports that <code>OPENAI_API_KEY</code> is written into a workload in plain text. It does not copy the key.</p>
         </li>
         <li>
           <h3>Output other systems can use</h3>
-          <p>A report for people, Pinaka's own JSON, or a CycloneDX 1.6 document for inventory and compliance tools.</p>
+          <p>A readable report, Pinaka&rsquo;s own JSON, or a CycloneDX 1.6 document for inventory and compliance tools.</p>
         </li>
       </ol>
     </section>
   </main>
 
-  <footer class="colophon">
-    <p>Pinaka is open source under the GNU Affero General Public License, version 3. This page loads nothing from other sites.</p>
+  <footer class="footer">
+    <div class="footer-inner">
+      <p class="footer-brand">Pinaka</p>
+      <p>Open source under the GNU Affero General Public License, version 3. This page loads nothing from other sites.</p>
+      <a href="https://github.com/dhruv29/Pinaka" rel="noopener">github.com/dhruv29/Pinaka</a>
+    </div>
   </footer>
 
-  <div id="drop" class="drop" hidden><p>Drop the bill to read it</p></div>
+  <div id="drop" class="drop" hidden><p>Drop the bill to read it here</p></div>
 
   <script src="sample.js"></script>
+  <script src="map.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
