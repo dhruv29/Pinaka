@@ -627,3 +627,9 @@ rect.fill[data-sev] { fill: var(--sev); }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* The map is wider than a phone; say so rather than leave it looking cut off. */
+.map-hint { display: none; }
+@media (max-width: 720px) {
+  .map-hint { display: block; margin: 0 0 0.6rem; font-size: 0.8rem; opacity: 0.75; }
+}
