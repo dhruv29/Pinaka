@@ -83,5 +83,8 @@ func Parse(r io.Reader, opts Options) (aibom.BOM, error) {
 		subject = defaultParseSubject
 	}
 	objects, notes := d.finish()
+	if !d.full {
+		notes = append(notes, absentKindNotes(objects)...)
+	}
 	return analyze(objects, notes, subject), nil
 }

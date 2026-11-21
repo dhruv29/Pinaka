@@ -76,6 +76,10 @@ type scan struct {
 	noLimit     bool
 	shared      bool
 	jupyterOpen bool
+	// redirected is set while a container whose AI client is pointed at a
+	// non-vendor host is scanned: its key names then say nothing about
+	// which vendor is used.
+	redirected bool
 }
 
 func (a *analyzer) scanWorkload(w workload) {

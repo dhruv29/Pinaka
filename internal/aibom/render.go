@@ -136,7 +136,7 @@ func writeRisks(b *strings.Builder, bom BOM) {
 	b.WriteString("## Look at these first\n\nEach is an observation with its reason, not a proven vulnerability.\n\n")
 	b.WriteString("| Severity | Component | What was seen | Where |\n|---|---|---|---|\n")
 	for _, f := range all {
-		fmt.Fprintf(b, "| %s | %s | %s | %s |\n", f.Risk.Severity, cell(label(f.Component)), cell(f.Risk.Summary), cell(firstPlace(f.Component)))
+		fmt.Fprintf(b, "| %s | %s | %s | %s |\n", f.Risk.Severity, cell(label(f.Component)), cell(f.Risk.Summary), cell(riskPlace(f)))
 	}
 	b.WriteString("\n")
 }
@@ -178,6 +178,15 @@ func place(e Evidence) string {
 		out += " (" + e.Detail + ")"
 	}
 	return out
+}
+
+// riskPlace is where a risk was raised, or else where its component was
+// first seen.
+func riskPlace(f Flag) string {
+	if f.Risk.Where != nil {
+		return place(*f.Risk.Where)
+	}
+	return firstPlace(f.Component)
 }
 
 func firstPlace(c Component) string {
@@ -306,7 +315,11 @@ func properties(c Component) []cdxProperty {
 		out = append(out, cdxProperty{Name: propertyPrefix + "evidence", Value: place(e)})
 	}
 	for _, r := range c.Risks {
-		out = append(out, cdxProperty{Name: propertyPrefix + "risk:" + r.ID, Value: string(r.Severity) + ": " + r.Summary})
+		value := string(r.Severity) + ": " + r.Summary
+		if r.Where != nil {
+			value += " (at " + place(*r.Where) + ")"
+		}
+		out = append(out, cdxProperty{Name: propertyPrefix + "risk:" + r.ID, Value: value})
 	}
 	return out
 }

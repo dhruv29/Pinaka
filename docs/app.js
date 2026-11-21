@@ -18,7 +18,12 @@ const KINDS = [
 ];
 const OTHER_KIND = "other";
 const SEVERITIES = ["critical", "high", "medium", "low", "info"];
-const ORIGIN_LABELS = { repo: "Code", cluster: "Cluster" };
+const ORIGIN_LABELS = { repo: "Code", cluster: "Cluster", "repo+cluster": "Code + cluster" };
+
+/** A component seen in both scans counts for the code view and the cluster view. */
+function seenIn(component, origin) {
+  return component.origin === origin || component.origin === "repo+cluster";
+}
 const SEVERITY_FILTERS = {
   any: () => true,
   flagged: (c) => c.worst !== null,
@@ -155,7 +160,7 @@ function haystack(component) {
 }
 
 function matches(component) {
-  if (state.origin !== "all" && component.origin !== state.origin) return false;
+  if (state.origin !== "all" && !seenIn(component, state.origin)) return false;
   if (state.kind && kindOf(component) !== state.kind) return false;
   if (!SEVERITY_FILTERS[state.severity](component)) return false;
   const query = state.query.trim().toLowerCase();
@@ -243,8 +248,8 @@ function uniquePlaces(components) {
 }
 
 function renderWhere(bill) {
-  const code = bill.components.filter((c) => c.origin === "repo");
-  const cluster = bill.components.filter((c) => c.origin === "cluster");
+  const code = bill.components.filter((c) => seenIn(c, "repo"));
+  const cluster = bill.components.filter((c) => seenIn(c, "cluster"));
   const total = code.length + cluster.length || 1;
   const codeWidth = (code.length / total) * 100;
   const bar = svg("svg", { class: "split", viewBox: "0 0 100 10", preserveAspectRatio: "none", "aria-hidden": "true" }, [

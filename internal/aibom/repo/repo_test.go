@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/dhruv29/Pinaka/internal/aibom"
@@ -113,6 +114,20 @@ func TestScanDoesNotFollowSymbolicLinksOutOfTheTree(t *testing.T) {
 	bom := mustScan(t, root, Options{})
 	if len(bom.Components) != 0 {
 		t.Errorf("symlinked content was scanned: %s", names(bom))
+	}
+}
+
+func TestScanNotesSymbolicLinksAndSpecialFilesItDidNotRead(t *testing.T) {
+	root := writeTree(t, map[string]string{"main.py": "print(1)\n"})
+	if err := os.Symlink("/etc", filepath.Join(root, "etc-link")); err != nil {
+		t.Skip("symlinks unsupported:", err)
+	}
+	if err := syscall.Mkfifo(filepath.Join(root, "pipe.py"), 0o600); err != nil {
+		t.Skip("named pipes unsupported:", err)
+	}
+	bom := mustScan(t, root, Options{})
+	if !hasNote(bom, "symbolic links and were not followed: etc-link") || !hasNote(bom, "not regular files") || !hasNote(bom, "pipe.py") {
+		t.Errorf("notes = %v", bom.Notes)
 	}
 }
 

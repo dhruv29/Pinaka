@@ -3,68 +3,23 @@ package kube
 // This file holds the name tables the detectors match against. They are
 // data: extend them here.
 
-// credentialNames maps environment variable names that hold AI-provider
-// credentials to the provider.
-var credentialNames = map[string]string{
-	"OPENAI_API_KEY":           "openai",
-	"ANTHROPIC_API_KEY":        "anthropic",
-	"HF_TOKEN":                 "huggingface",
-	"HUGGING_FACE_HUB_TOKEN":   "huggingface",
-	"HUGGINGFACEHUB_API_TOKEN": "huggingface",
-	"HF_API_TOKEN":             "huggingface",
-	"GOOGLE_API_KEY":           "google-gemini",
-	"GEMINI_API_KEY":           "google-gemini",
-	"COHERE_API_KEY":           "cohere",
-	"CO_API_KEY":               "cohere",
-	"MISTRAL_API_KEY":          "mistral",
-	"GROQ_API_KEY":             "groq",
-	"TOGETHER_API_KEY":         "together",
-	"REPLICATE_API_TOKEN":      "replicate",
-	"DEEPSEEK_API_KEY":         "deepseek",
-	"XAI_API_KEY":              "xai",
-	"PERPLEXITY_API_KEY":       "perplexity",
-	"FIREWORKS_API_KEY":        "fireworks",
-	"OPENROUTER_API_KEY":       "openrouter",
-	"VOYAGE_API_KEY":           "voyage",
-	"PINECONE_API_KEY":         "pinecone",
-	"LANGCHAIN_API_KEY":        "langsmith",
-	"LANGSMITH_API_KEY":        "langsmith",
-	"WANDB_API_KEY":            "wandb",
-	"NGC_API_KEY":              "nvidia-ngc",
-	"LITELLM_MASTER_KEY":       "litellm",
-}
+// Credential names and hosted providers come from the tables in package
+// aibom, which the repository scan shares, so the same key or service
+// found in the code and in the cluster carries the same name.
 
 // credentialPrefixes catch families such as AZURE_OPENAI_API_KEY and
 // AZURE_OPENAI_KEY: a known prefix plus a credential-looking suffix.
-var credentialPrefixes = map[string]string{"AZURE_OPENAI_": "azure-openai"}
+// The value is the table entry the family belongs to.
+var credentialPrefixes = map[string]string{"AZURE_OPENAI_": "AZURE_OPENAI_API_KEY"}
 
 var credentialSuffixes = []string{"_KEY", "_TOKEN", "_SECRET"}
 
 // credentialFlags are command-line flags whose value is a credential.
 var credentialFlags = []string{"--api-key", "--hf-token"}
 
-// providerHosts maps API host names (exact or as a parent domain) to the
-// provider, for base-URL settings.
-var providerHosts = map[string]string{
-	"api.openai.com":                    "openai",
-	"api.anthropic.com":                 "anthropic",
-	"openai.azure.com":                  "azure-openai",
-	"generativelanguage.googleapis.com": "google-gemini",
-	"aiplatform.googleapis.com":         "google-vertex",
-	"api.cohere.ai":                     "cohere",
-	"api.cohere.com":                    "cohere",
-	"api.mistral.ai":                    "mistral",
-	"api.groq.com":                      "groq",
-	"api.together.xyz":                  "together",
-	"api.deepseek.com":                  "deepseek",
-	"api.x.ai":                          "xai",
-	"openrouter.ai":                     "openrouter",
-	"api-inference.huggingface.co":      "huggingface",
-	"router.huggingface.co":             "huggingface",
-	"api.fireworks.ai":                  "fireworks",
-	"api.perplexity.ai":                 "perplexity",
-	"integrate.api.nvidia.com":          "nvidia-nim-api",
-}
+// aiEndpointWords mark an endpoint setting as an AI client's, so its host is
+// listed even when it is no known vendor's.
+var aiEndpointWords = []string{"OPENAI", "ANTHROPIC", "OLLAMA", "LLM", "GEMINI", "MISTRAL", "COHERE", "GROQ", "INFERENCE", "TGI", "MODEL"}
 
 // urlNameSuffixes say an environment variable holds an endpoint, so its
 // value may be parsed for a host. Other values are never looked at.
@@ -88,10 +43,11 @@ var offlineEnvNames = map[string]bool{"HF_HUB_OFFLINE": true, "TRANSFORMERS_OFFL
 
 const trustRemoteCodeFlag = "--trust-remote-code"
 
-// providerModelPrefixes recognise hosted-model names used through an API.
+// providerModelPrefixes recognise hosted-model names used through an API,
+// mapped to the supplier the repository scan gives the same models.
 var providerModelPrefixes = map[string]string{
-	"gpt-": "openai", "o1": "openai", "o3": "openai", "o4": "openai", "chatgpt-": "openai", "text-embedding-": "openai",
-	"claude-": "anthropic", "gemini-": "google-gemini", "command-": "cohere",
+	"gpt-": "OpenAI", "o1": "OpenAI", "o3": "OpenAI", "o4": "OpenAI", "chatgpt-": "OpenAI", "text-embedding-": "OpenAI",
+	"claude-": "Anthropic", "gemini-": "Google", "command-": "Cohere",
 }
 
 // modelURISchemes are storage locations for weights.

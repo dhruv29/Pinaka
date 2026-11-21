@@ -633,3 +633,7 @@ rect.fill[data-sev] { fill: var(--sev); }
 @media (max-width: 720px) {
   .map-hint { display: block; margin: 0 0 0.6rem; font-size: 0.8rem; opacity: 0.75; }
 }
+
+/* Seen in both the code and the cluster. */
+.origin-tag[data-origin="repo+cluster"] { color: var(--brand, #5eead4); background: rgb(94 234 212 / 0.12); }
+.map-node[data-origin="repo+cluster"] .node-origin { fill: var(--brand, #5eead4); }

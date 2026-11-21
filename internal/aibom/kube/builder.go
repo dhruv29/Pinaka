@@ -25,6 +25,7 @@ type found struct {
 type riskHit struct {
 	raised  bool
 	reasons map[string]map[string]bool // workload path → reasons
+	wheres  map[aibom.Evidence]bool    // where it was raised
 }
 
 type entry struct {
@@ -45,7 +46,7 @@ func newBuilder() *builder { return &builder{entries: map[string]*entry{}} }
 // add records a component seen at path/detail and returns its ID.
 func (b *builder) add(f found, path, detail string) string {
 	f.name, f.version = clean(f.name), clean(f.version)
-	id := aibom.ComponentID(f.kind, f.name, f.version, aibom.OriginCluster)
+	id := aibom.ComponentID(f.kind, f.name, f.version)
 	e, ok := b.entries[id]
 	if !ok {
 		e = &entry{evidence: map[aibom.Evidence]bool{}, props: map[string]map[string]bool{}, risks: map[string]*riskHit{}}
@@ -84,13 +85,22 @@ func (b *builder) setProps(id string, props map[string]string) {
 
 // risk attaches a risk observation for one workload to a component.
 func (b *builder) risk(id, riskID string, raised bool, path, reason string) {
+	b.riskAt(id, riskID, raised, aibom.Evidence{Path: path}, reason)
+}
+
+// riskAt is risk with the exact place it was raised, which the report
+// shows rather than wherever the component happened to be seen first.
+func (b *builder) riskAt(id, riskID string, raised bool, where aibom.Evidence, reason string) {
+	path := where.Path
 	e := b.entries[id]
 	h := e.risks[riskID]
 	if h == nil {
-		h = &riskHit{reasons: map[string]map[string]bool{}}
+		h = &riskHit{reasons: map[string]map[string]bool{}, wheres: map[aibom.Evidence]bool{}}
 		e.risks[riskID] = h
 	}
 	h.raised = h.raised || raised
+	where.Detail = clean(where.Detail)
+	h.wheres[where] = true
 	if h.reasons[path] == nil {
 		h.reasons[path] = map[string]bool{}
 	}
@@ -132,7 +142,7 @@ func (e *entry) render() aibom.Component {
 		if h.raised {
 			sev = def.Raised
 		}
-		c.Risks = append(c.Risks, aibom.Risk{ID: id, Severity: sev, Summary: def.Summary + " Seen on " + h.where() + "."})
+		c.Risks = append(c.Risks, aibom.Risk{ID: id, Severity: sev, Summary: def.Summary + " Seen on " + h.where() + ".", Where: h.first()})
 	}
 	return c
 }
@@ -151,6 +161,19 @@ func (h *riskHit) where() string {
 		parts = append(parts, p)
 	}
 	return strings.Join(parts, "; ")
+}
+
+// first returns the first place the risk was raised, in sorted order so
+// the result does not depend on input order.
+func (h *riskHit) first() *aibom.Evidence {
+	var best *aibom.Evidence
+	for ev := range h.wheres {
+		if best == nil || ev.Path < best.Path || (ev.Path == best.Path && ev.Detail < best.Detail) {
+			copied := ev
+			best = &copied
+		}
+	}
+	return best
 }
 
 func joinLimited(values []string, max int) string {

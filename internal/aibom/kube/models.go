@@ -158,6 +158,11 @@ func classifyModel(cand candidate, mc modelContext) (modelRef, bool) {
 	if strings.Contains(v, "://") {
 		return classifyURI(v, cand, mc)
 	}
+	// "user:token@registry/model" or "path?sig=…" can carry a credential;
+	// only the location is kept.
+	if v = aibom.RedactLocation(v); v == "" {
+		return modelRef{}, false
+	}
 	if strings.HasPrefix(v, "/") || strings.HasPrefix(v, "./") {
 		return modelRef{name: clean(v), source: "local path"}, true
 	}

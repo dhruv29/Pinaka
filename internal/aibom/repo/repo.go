@@ -96,6 +96,7 @@ func Scan(ctx context.Context, root string, opts Options) (aibom.BOM, error) {
 	if err := fs.WalkDir(tree.FS(), ".", s.visit); err != nil {
 		return aibom.BOM{}, fmt.Errorf("aibom/repo: walk %s: %w", root, err)
 	}
+	s.addInferred()
 	return s.out.bom(filepath.Clean(root), s.notes()), nil
 }
 
@@ -110,6 +111,9 @@ type scanner struct {
 	hitFileCap bool
 	skipped    map[string]int      // directory name -> times skipped
 	gaps       map[string][]string // reason -> paths not examined
+
+	inferred   []finding // providers inferred from SDKs and key names
+	redirected bool      // an AI client is pointed at a non-vendor host
 }
 
 func (s *scanner) visit(rel string, d fs.DirEntry, walkErr error) error {
@@ -138,7 +142,12 @@ func (s *scanner) visit(rel string, d fs.DirEntry, walkErr error) error {
 	}
 	// A symbolic link is not followed; its target is scanned under its own
 	// path if it lies inside the tree.
-	if !d.Type().IsRegular() {
+	switch {
+	case d.Type()&fs.ModeSymlink != 0:
+		s.gap("are symbolic links and were not followed", rel)
+		return nil
+	case !d.Type().IsRegular():
+		s.gap("are not regular files (pipes, sockets or devices) and were not read", rel)
 		return nil
 	}
 	if s.files++; s.files > s.opts.MaxFiles {

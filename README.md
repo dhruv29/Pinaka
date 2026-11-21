@@ -17,15 +17,15 @@ A sample bill, and a viewer for your own, is at
 |---|---|
 | Models | weight files (`.gguf`, `.safetensors`, `.onnx`, `.pt`, `.pkl`…), hosted model names in code, Hugging Face ids in loader calls, models named in a serving command |
 | AI libraries | from dependency manifests for Python, JavaScript, Go, Rust and Java, with versions |
-| Hosted providers | API hosts the code or a workload calls, and clients pointed at a non-vendor address |
+| Hosted providers | API hosts the code or a workload calls; the vendor behind an SDK dependency or a key name, marked as inferred, unless the client is pointed elsewhere; and clients pointed at a non-vendor or in-cluster address (host only) |
 | Model serving | vLLM, Ollama, Triton, text-generation-inference, KServe and others, from container images |
 | Data stores and platforms | vector databases, notebooks, experiment tracking |
 | Agent tooling | MCP server configurations, agent instruction files |
 | Accelerators | GPU requests per workload |
-| Credentials | **by name only**: which AI keys are referenced, and where. Values are never recorded |
+| Credentials | **by name only**: which AI keys are referenced, and where. Values are never recorded, nor are passwords or signed queries in model locations |
 
 Each item carries its evidence: a file and line, or `namespace/Kind/name` and
-the field.
+the field. Each risk also says where it was raised.
 
 ## What it flags
 
@@ -33,7 +33,9 @@ Observations with their reasons, not proven vulnerabilities:
 
 - a model file in a format that can run code when loaded (pickle and friends)
 - `trust_remote_code=True`, and loads that deserialise unsafely
-- an AI key written into code or into a workload as plain text
+- an AI key written into code (also as an `api_key=` or `apiKey:` argument)
+  or into a workload as plain text. Placeholders that self-hosted servers
+  expect, such as `EMPTY` or `sk-no-key-required`, are not flagged
 - an inference server, notebook or vector store reachable from outside the
   cluster, especially one that ships without authentication
 - models, libraries and images that are not pinned
@@ -53,6 +55,16 @@ make build                     # one binary, no dependencies
 kubectl get pods,deployments,statefulsets,daemonsets,jobs,cronjobs,services,ingresses,configmaps -A -o json > cluster.json
 ./pinaka scan -kube-file cluster.json              # a cluster you were only given a file from
 ```
+
+In one bill, an item found in both the code and the cluster is listed once,
+with `repo+cluster` as where it was found.
+
+A saved file can only show what was exported. Kinds it does not contain are
+listed under "Not examined" with what they hide (no Services, say, means
+exposure could not be judged). If the cluster runs KServe, Ray, Kubeflow or
+the Gateway API, add `inferenceservices.serving.kserve.io`,
+`rayclusters.ray.io`, `rayservices.ray.io`, `notebooks.kubeflow.org` and
+`httproutes.gateway.networking.k8s.io` to the `kubectl get` list.
 
 Output:
 
@@ -74,9 +86,11 @@ Exit status: 0 done, 1 the scan failed, 2 bad usage, 3 `-fail-on` was tripped.
 - **It only reads.** A repository scan opens files and makes no network calls.
   A cluster scan runs `kubectl get` and nothing else, with your own `kubectl`
   login, and never requests secrets. A read-only account is enough.
-- **Gaps are stated.** Skipped directories, resource types the cluster does not
-  have, things your login may not read and limits that were reached are listed
-  under "Not examined", so a gap is never mistaken for an absence.
+- **Gaps are stated.** Skipped directories, symbolic links and special files,
+  resource types the cluster does not have or a saved file does not contain,
+  things your login may not read and limits that were reached (including
+  long command lines and ConfigMap values read only in part) are listed under
+  "Not examined", so a gap is never mistaken for an absence.
 - **Untrusted input.** File contents and cluster objects are treated as
   hostile: sizes are capped, symbolic links are not followed out of the
   repository, and names from a scan cannot inject markup into a report.

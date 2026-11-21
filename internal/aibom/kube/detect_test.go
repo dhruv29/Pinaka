@@ -133,7 +133,7 @@ func TestModelsAreReadFromFlagsCommandsEnvAndInitContainers(t *testing.T) {
 	if m := mustFind(t, bom, aibom.KindModel, "org/m1"); len(m.Risks) != 0 {
 		t.Fatalf("a model named for an unknown app is not a download: %+v", m)
 	}
-	if m := mustFind(t, bom, aibom.KindModel, "gpt-4o-mini"); m.Supplier != "openai" || m.Properties["source"] != "provider API" {
+	if m := mustFind(t, bom, aibom.KindModel, "gpt-4o-mini"); m.Supplier != "OpenAI" || m.Properties["source"] != "provider API" {
 		t.Fatalf("model = %+v", m)
 	}
 	mustFind(t, bom, aibom.KindModel, "/models/local")
@@ -195,11 +195,11 @@ func TestProvidersAreFoundFromBaseURLsButNotOtherURLs(t *testing.T) {
 	 {"name":"AZURE_OPENAI_DEPLOYMENT","value":"gpt4"},{"name":"bad name!","value":"x"},{"name":"COHERE_API_KEY","value":""}]}`
 	bom := mustParse(t, podJSON(c, ""))
 
-	if p := mustFind(t, bom, aibom.KindProvider, "azure-openai"); p.Properties["host"] != "my-res.openai.azure.com" {
+	if p := mustFind(t, bom, aibom.KindProvider, "Azure OpenAI"); p.Properties["host"] != "my-res.openai.azure.com" {
 		t.Fatalf("provider = %+v", p)
 	}
-	mustFind(t, bom, aibom.KindProvider, "google-vertex")
-	if _, ok := find(bom, aibom.KindProvider, "anthropic"); ok {
+	mustFind(t, bom, aibom.KindProvider, "Google Vertex AI")
+	if _, ok := find(bom, aibom.KindProvider, "Anthropic API"); ok {
 		t.Fatal("a non-endpoint variable was read as a provider URL")
 	}
 	if _, ok := find(bom, aibom.KindCredential, "AZURE_OPENAI_DEPLOYMENT"); ok {

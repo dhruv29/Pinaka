@@ -158,6 +158,11 @@ func isModelfile(rel string) bool {
 // on disk or a model from the Ollama library. A library model without a tag
 // follows "latest".
 func (s *scanner) modelfileBase(f *textFile, offset int, base string) {
+	// A base can be a URL or a registry reference carrying a password or a
+	// signed query; only the location is kept.
+	if base = aibom.RedactLocation(base); base == "" {
+		return
+	}
 	if strings.HasPrefix(base, ".") || strings.HasPrefix(base, "/") || strings.Contains(base, ".gguf") {
 		s.addModel(f, offset, aibom.Component{Name: base, Properties: map[string]string{"reference": "file"}}, "Modelfile base")
 		return

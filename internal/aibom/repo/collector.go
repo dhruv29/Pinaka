@@ -61,7 +61,7 @@ func newCollector(opts Options) *collector {
 func (c *collector) add(f finding) {
 	comp := f.component
 	comp.Origin = aibom.OriginRepo
-	comp.ID = aibom.ComponentID(comp.Kind, comp.Name, comp.Version, comp.Origin)
+	comp.ID = aibom.ComponentID(comp.Kind, comp.Name, comp.Version)
 	e, ok := c.byID[comp.ID]
 	if !ok {
 		if len(c.byID) >= c.maxComponents {
@@ -85,6 +85,10 @@ func (c *collector) merge(e *entry, comp aibom.Component, f finding) {
 	}
 	e.component.Properties = mergeProperties(e.component.Properties, comp.Properties)
 	for _, r := range f.risks {
+		// The place that raised the risk is kept with it, so a report
+		// does not point at some other mention of the same component.
+		where := f.evidence
+		r.Where = &where
 		e.risks[r.ID] = strongerRisk(e.risks[r.ID], r)
 	}
 	if e.seen[f.evidence] {

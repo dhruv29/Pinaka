@@ -14,6 +14,7 @@ const (
 	riskRemoteDownload    = "remote-model-download"
 	riskGPUWithoutLimits  = "gpu-without-limits"
 	riskSharedGPU         = "shared-gpu"
+	riskCustomEndpoint    = "custom-endpoint"
 )
 
 // riskDef is one entry of the risk table. Base is the usual severity;
@@ -47,6 +48,10 @@ var riskTable = map[string]riskDef{
 		aibom.SeverityLow, aibom.SeverityMedium},
 	riskGPUWithoutLimits: {"GPU use is not accounted for by the scheduler: a GPU request without a limit, or GPU node placement or NVIDIA_VISIBLE_DEVICES=all without any GPU request.",
 		aibom.SeverityInfo, aibom.SeverityInfo},
+	// Raised: the host is outside the organisation, so a third party gets
+	// the prompts and data.
+	riskCustomEndpoint: {"The AI client's base URL points at a host that is not a known vendor's: a self-hosted model server when the host is private, otherwise a third party that receives prompts and data.",
+		aibom.SeverityInfo, aibom.SeverityLow},
 	riskSharedGPU: {"The workload uses a time-sliced shared GPU resource, which gives no memory or fault isolation between tenants.",
 		aibom.SeverityInfo, aibom.SeverityInfo},
 }

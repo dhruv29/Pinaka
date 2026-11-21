@@ -132,7 +132,7 @@ func (s *scanner) addMCPServer(f *textFile, srv mcpServer) {
 	}
 	s.add(found)
 	for name, value := range srv.env {
-		if _, known := aiCredentials[name]; known {
+		if _, known := aibom.Credentials[name]; known {
 			s.credentialAt(f, srv.line, name, looksLikeKey(value))
 		}
 	}
@@ -167,7 +167,7 @@ func firstOperand(args []string) string {
 // credentialAt records a credential name seen at a known line.
 func (s *scanner) credentialAt(f *textFile, line int, name string, hardcoded bool) {
 	found := finding{
-		component: aibom.Component{Kind: aibom.KindCredential, Name: name, Supplier: aiCredentials[name], Properties: map[string]string{propContext: f.context}},
+		component: aibom.Component{Kind: aibom.KindCredential, Name: name, Supplier: credentialSupplier(name), Properties: map[string]string{propContext: f.context}},
 		evidence:  aibom.Evidence{Path: f.path, Line: line, Detail: "credential passed to an MCP server"},
 	}
 	if hardcoded {

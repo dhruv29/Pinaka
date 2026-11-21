@@ -49,7 +49,7 @@ function deriveLinks(components) {
     for (const evidence of component.evidence) {
       if (!evidence.path) continue;
       add("same\u0000" + evidence.path, component);
-      const folder = component.origin === "repo" ? serviceFolder(evidence.path) : "";
+      const folder = seenIn(component, "repo") ? serviceFolder(evidence.path) : "";
       if (folder) add("folder\u0000" + folder, component);
     }
   }

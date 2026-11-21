@@ -78,7 +78,9 @@ func TestParseFindsVLLMServingItsModelOnAGPUBehindALoadBalancer(t *testing.T) {
 	if cred.Properties["reference"] != "secret hf/token" || len(cred.Risks) != 0 {
 		t.Fatalf("HF_TOKEN from a Secret should be recorded without risk: %+v", cred)
 	}
-	mustFind(t, bom, aibom.KindProvider, "huggingface")
+	if p, ok := find(bom, aibom.KindProvider, "Hugging Face Inference"); ok {
+		t.Fatalf("a token that downloads weights is not a hosted inference provider: %+v", p)
+	}
 }
 
 func TestParseCountsADeploymentAndItsPodsAsOneWorkload(t *testing.T) {
@@ -182,8 +184,13 @@ func TestParseFindsQdrantAndRecordsDigestPinning(t *testing.T) {
 func TestParseFindsNothingInAnOrdinaryWebApp(t *testing.T) {
 	bom := mustParse(t, plainFixture)
 
-	if len(bom.Components) != 0 || len(bom.Notes) != 0 {
+	if len(bom.Components) != 0 {
 		t.Fatalf("nginx + postgres produced %+v", bom)
+	}
+	for _, note := range bom.Notes {
+		if !strings.HasPrefix(note, "the input has no ") {
+			t.Errorf("unexpected note %q", note)
+		}
 	}
 }
 
@@ -215,7 +222,7 @@ func TestParseFindsCredentialsModelsAndProvidersInConfigMaps(t *testing.T) {
 	if m := mustFind(t, bom, aibom.KindModel, "mistralai/Mistral-7B-Instruct-v0.3"); m.Properties["configured_in"] != "ConfigMap" {
 		t.Fatalf("model = %+v", m)
 	}
-	if p := mustFind(t, bom, aibom.KindProvider, "openai"); !strings.Contains(p.Properties["host"], "api.openai.com") {
+	if p := mustFind(t, bom, aibom.KindProvider, "OpenAI API"); !strings.Contains(p.Properties["host"], "api.openai.com") {
 		t.Fatalf("provider = %+v", p)
 	}
 }

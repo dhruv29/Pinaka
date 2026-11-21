@@ -113,6 +113,41 @@ func TestScanMergesARepositoryWithSavedClusterOutput(t *testing.T) {
 	}
 }
 
+func TestScanJoinsWhatTheCodeAndTheClusterBothHaveIntoOneComponent(t *testing.T) {
+	saved := filepath.Join(t.TempDir(), "cluster.json")
+	cluster := `{"kind":"Pod","apiVersion":"v1","metadata":{"name":"bot","namespace":"ml"},"spec":{"containers":[{"name":"c","image":"corp/bot:1",
+	 "env":[{"name":"ANTHROPIC_API_KEY","valueFrom":{"secretKeyRef":{"name":"k","key":"k"}}},{"name":"MODEL_NAME","value":"claude-sonnet-4-5"}]}]}}`
+	if err := os.WriteFile(saved, []byte(cluster), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, stderr := scan(t, "", "-repo", project(t), "-kube-file", saved, "-format", "json")
+	if code != exitOK {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	var bom aibom.BOM
+	if err := json.Unmarshal([]byte(stdout), &bom); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]int{}
+	for _, c := range bom.Components {
+		seen[string(c.Kind)+" "+c.Name]++
+		switch string(c.Kind) + " " + c.Name {
+		case "provider Anthropic API", "model claude-sonnet-4-5":
+			if c.Origin != aibom.OriginBoth {
+				t.Errorf("%s %q origin %q, want %q", c.Kind, c.Name, c.Origin, aibom.OriginBoth)
+			}
+		}
+	}
+	for key, n := range seen {
+		if n > 1 {
+			t.Errorf("%s listed %d times", key, n)
+		}
+	}
+	if seen["provider Anthropic API"] != 1 || seen["model claude-sonnet-4-5"] != 1 {
+		t.Errorf("components = %v", seen)
+	}
+}
+
 func TestScanReadsClusterOutputFromStandardInput(t *testing.T) {
 	code, stdout, stderr := scan(t, vllmDeployment, "-kube-file", "-")
 

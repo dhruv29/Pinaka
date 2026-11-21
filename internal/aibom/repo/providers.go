@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"net"
 	"net/url"
 	"regexp"
 	"strings"
@@ -9,40 +8,8 @@ import (
 	"github.com/dhruv29/Pinaka/internal/aibom"
 )
 
-// aiProvider is a hosted AI service recognised by its API hostname.
-type aiProvider struct {
-	name     string
-	supplier string
-	host     string // a regular expression for the hostname, anchored by the caller
-}
-
-// aiProviders is the table of recognised API hosts. Wildcard parts are
-// limited to DNS label characters so a host never spans a sentence.
-var aiProviders = []aiProvider{
-	{"OpenAI API", "OpenAI", `api\.openai\.com`},
-	{"Anthropic API", "Anthropic", `api\.anthropic\.com`},
-	{"Google Gemini API", "Google", `generativelanguage\.googleapis\.com`},
-	{"Google Vertex AI", "Google", `[a-z0-9-]+-aiplatform\.googleapis\.com|aiplatform\.googleapis\.com`},
-	{"Azure OpenAI", "Microsoft", `[a-z0-9-]+\.openai\.azure\.com`},
-	{"Azure AI Inference", "Microsoft", `[a-z0-9-]+\.services\.ai\.azure\.com|models\.inference\.ai\.azure\.com`},
-	{"Amazon Bedrock", "Amazon", `bedrock-runtime(?:-fips)?\.[a-z0-9-]+\.amazonaws\.com`},
-	{"Mistral AI API", "Mistral AI", `api\.mistral\.ai|codestral\.mistral\.ai`},
-	{"Cohere API", "Cohere", `api\.cohere\.(?:com|ai)`},
-	{"Groq API", "Groq", `api\.groq\.com`},
-	{"Together AI API", "Together AI", `api\.together\.(?:xyz|ai)`},
-	{"OpenRouter", "OpenRouter", `openrouter\.ai`},
-	{"Replicate API", "Replicate", `api\.replicate\.com`},
-	{"Hugging Face Inference", "Hugging Face", `api-inference\.huggingface\.co|router\.huggingface\.co|[a-z0-9-]+\.endpoints\.huggingface\.cloud`},
-	{"xAI API", "xAI", `api\.x\.ai`},
-	{"DeepSeek API", "DeepSeek", `api\.deepseek\.com`},
-	{"Fireworks AI API", "Fireworks AI", `api\.fireworks\.ai`},
-	{"Perplexity API", "Perplexity", `api\.perplexity\.ai`},
-	{"Pinecone", "Pinecone", `[a-z0-9-]+\.pinecone\.io`},
-	{"Ollama (local)", "Ollama", `(?:localhost|127\.0\.0\.1|0\.0\.0\.0|ollama):11434`},
-}
-
 type compiledProvider struct {
-	aiProvider
+	aibom.Provider
 	re *regexp.Regexp
 }
 
@@ -50,9 +17,9 @@ type compiledProvider struct {
 // either side, so "api.openai.com.evil.example" or "myapi.openai.com" does
 // not count as the vendor.
 var compiledProviders = func() []compiledProvider {
-	out := make([]compiledProvider, 0, len(aiProviders))
-	for _, p := range aiProviders {
-		re := regexp.MustCompile(`(?i)(?:^|[^a-z0-9.-])(` + p.host + `)(?:$|[^a-z0-9.-]|\.(?:$|[^a-z0-9]))`)
+	out := make([]compiledProvider, 0, len(aibom.Providers))
+	for _, p := range aibom.Providers {
+		re := regexp.MustCompile(`(?i)(?:^|[^a-z0-9.-])(` + p.HostPattern + `)(?:$|[^a-z0-9.-]|\.(?:$|[^a-z0-9]))`)
 		out = append(out, compiledProvider{p, re})
 	}
 	return out
@@ -64,7 +31,7 @@ func (s *scanner) providerHosts(f *textFile) {
 		for _, loc := range p.re.FindAllStringSubmatchIndex(f.text, -1) {
 			host := strings.ToLower(f.text[loc[2]:loc[3]])
 			s.add(finding{
-				component: aibom.Component{Kind: aibom.KindProvider, Name: p.name, Supplier: p.supplier, Properties: map[string]string{propContext: f.context}},
+				component: aibom.Component{Kind: aibom.KindProvider, Name: p.Name, Supplier: p.Supplier, Properties: map[string]string{propContext: f.context}},
 				evidence:  aibom.Evidence{Path: f.path, Line: f.lineAt(loc[2]), Detail: "API host " + host},
 			})
 		}
@@ -72,13 +39,13 @@ func (s *scanner) providerHosts(f *textFile) {
 }
 
 // vendorProvider returns the provider whose API host is host, if any.
-func vendorProvider(host string) (aiProvider, bool) {
+func vendorProvider(host string) (aibom.Provider, bool) {
 	for _, p := range compiledProviders {
 		if p.re.MatchString(host) {
-			return p.aiProvider, true
+			return p.Provider, true
 		}
 	}
-	return aiProvider{}, false
+	return aibom.Provider{}, false
 }
 
 // baseURLOverride is a client base URL set to a literal: base_url=,
@@ -118,12 +85,13 @@ func (s *scanner) baseURLs(f *textFile) {
 		if _, isVendor := vendorProvider(host); isVendor {
 			continue // the vendor host itself is already listed
 		}
+		s.redirected = true
 		key := riskCustomEndpoint
-		if isPrivateHost(host) {
+		if aibom.IsPrivateHost(host) {
 			key = riskLocalEndpoint
 		}
 		s.add(finding{
-			component: aibom.Component{Kind: aibom.KindProvider, Name: "custom endpoint " + host, Properties: map[string]string{propContext: f.context, "host": host}},
+			component: aibom.Component{Kind: aibom.KindProvider, Name: aibom.CustomEndpointName(host), Properties: map[string]string{propContext: f.context, "host": host}},
 			evidence:  aibom.Evidence{Path: f.path, Line: f.lineAt(loc[0]), Detail: "client base URL override"},
 			risks:     []aibom.Risk{risk(key)},
 		})
@@ -141,20 +109,6 @@ func hostOnly(raw string) string {
 		return ""
 	}
 	return strings.ToLower(u.Host)
-}
-
-// isPrivateHost reports loopback, private and single-label hosts: a model
-// server run by the same organisation rather than a third party.
-func isPrivateHost(hostport string) bool {
-	host := hostport
-	if h, _, err := net.SplitHostPort(hostport); err == nil {
-		host = h
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		return ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified()
-	}
-	return host == "localhost" || !strings.Contains(host, ".") || strings.HasSuffix(host, ".local") ||
-		strings.HasSuffix(host, ".internal") || strings.HasSuffix(host, ".svc") || strings.HasSuffix(host, ".cluster.local")
 }
 
 // hintWindow is how far either side of a base URL an AI client must be

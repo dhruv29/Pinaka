@@ -21,7 +21,10 @@ var (
 )
 
 func (a *analyzer) scanContainer(s *scan, c container, name string) {
-	tokens := commandTokens(c)
+	tokens, truncated := commandTokens(c)
+	if truncated {
+		a.note(fmt.Sprintf("%s %s: the command line has more than %d words; the rest was not examined", s.path, name, maxTokens))
+	}
 	prod := a.scanImage(s, c.Image, name)
 	for _, p := range matchCommand(tokens) {
 		if p == prod {
@@ -33,9 +36,16 @@ func (a *analyzer) scanContainer(s *scan, c container, name string) {
 		}
 	}
 	a.scanModels(s, c, tokens, prod, name)
+	s.redirected = false
+	for _, e := range c.Env {
+		if e.ValueFrom == nil && redirectsAIClient(e.Name, e.Value) {
+			s.redirected = true
+		}
+	}
 	for _, e := range c.Env {
 		a.scanEnvVar(s, e, name)
 	}
+	s.redirected = false
 	a.scanArgCredentials(s, tokens, name)
 	a.scanAgentArgs(s, tokens, name)
 	a.scanResources(s, c.Resources, name)
@@ -46,18 +56,19 @@ func (a *analyzer) scanContainer(s *scan, c container, name string) {
 }
 
 // commandTokens splits command and args into words, also splitting shell
-// strings such as `sh -c "ollama serve & ollama pull llama3"`.
-func commandTokens(c container) []string {
+// strings such as `sh -c "ollama serve & ollama pull llama3"`, and reports
+// whether it stopped at the word cap.
+func commandTokens(c container) ([]string, bool) {
 	var out []string
 	for _, part := range append(append([]string{}, c.Command...), c.Args...) {
 		for _, f := range strings.FieldsFunc(part, func(r rune) bool { return r == ' ' || r == '\t' || r == '\n' || r == ';' || r == '&' || r == '|' }) {
 			if len(out) == maxTokens {
-				return out
+				return out, true
 			}
 			out = append(out, strings.Trim(f, `"'`))
 		}
 	}
-	return out
+	return out, false
 }
 
 func (a *analyzer) scanImage(s *scan, image, name string) *product {
@@ -115,11 +126,11 @@ func hasToken(tokens []string, want string) bool {
 func (a *analyzer) scanArgCredentials(s *scan, tokens []string, name string) {
 	for _, flag := range credentialFlags {
 		for _, v := range flagValues(tokens, flag) {
-			if !isLiteral(v) {
+			if !isSecretValue(v) {
 				continue
 			}
 			id := a.b.add(found{kind: aibom.KindCredential, name: flag, props: map[string]string{"reference": "literal command-line argument"}}, s.path, name+".args "+flag)
-			a.b.risk(id, riskLiteralCredential, true, s.path, "passed as the "+flag+" argument")
+			a.b.riskAt(id, riskLiteralCredential, true, aibom.Evidence{Path: s.path, Detail: name + ".args " + flag}, "passed as the "+flag+" argument")
 		}
 	}
 }

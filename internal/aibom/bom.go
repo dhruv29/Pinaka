@@ -74,6 +74,9 @@ type Risk struct {
 	Severity Severity `json:"severity"`
 	// Summary is one sentence saying what was seen and why it matters.
 	Summary string `json:"summary"`
+	// Where is the place the risk was raised, when that is more exact
+	// than the component's evidence as a whole.
+	Where *Evidence `json:"where,omitempty"`
 }
 
 // Component is one entry in the bill of materials.
@@ -90,7 +93,8 @@ type Component struct {
 	// Ecosystem is the package ecosystem or registry: pypi, npm, go, cargo,
 	// maven, huggingface, oci, ollama.
 	Ecosystem string `json:"ecosystem,omitempty"`
-	// Origin is "repo" or "cluster".
+	// Origin is where the component was seen: "repo", "cluster", or
+	// "repo+cluster" when a merged bill found it in both.
 	Origin   string     `json:"origin"`
 	Evidence []Evidence `json:"evidence"`
 	Risks    []Risk     `json:"risks,omitempty"`
@@ -114,14 +118,47 @@ const (
 	OriginRepo = "repo"
 	// OriginCluster marks a component found in a running cluster.
 	OriginCluster = "cluster"
+	// OriginBoth marks a component a merged bill found in the code and in
+	// the cluster.
+	OriginBoth = OriginRepo + originSeparator + OriginCluster
+
+	originSeparator = "+"
 
 	idBytes = 8
 )
 
-// ComponentID returns the stable identifier for a component.
-func ComponentID(kind Kind, name, version, origin string) string {
-	sum := sha256.Sum256([]byte(strings.Join([]string{string(kind), strings.ToLower(name), version, origin}, "\x00")))
+// ComponentID returns the stable identifier for a component. It does not
+// depend on where the component was seen, so the same model or key found
+// in the code and in the cluster is one component in a merged bill.
+func ComponentID(kind Kind, name, version string) string {
+	sum := sha256.Sum256([]byte(strings.Join([]string{string(kind), strings.ToLower(name), version}, "\x00")))
 	return hex.EncodeToString(sum[:idBytes])
+}
+
+// JoinOrigins returns the origin of a component seen in both a and b:
+// "repo", "cluster" or "repo+cluster". Origins it does not know are kept,
+// sorted, after the known ones.
+func JoinOrigins(a, b string) string {
+	seen := map[string]bool{}
+	for _, origin := range []string{a, b} {
+		for _, part := range strings.Split(origin, originSeparator) {
+			if part != "" {
+				seen[part] = true
+			}
+		}
+	}
+	var known, other []string
+	for _, origin := range []string{OriginRepo, OriginCluster} {
+		if seen[origin] {
+			known = append(known, origin)
+			delete(seen, origin)
+		}
+	}
+	for origin := range seen {
+		other = append(other, origin)
+	}
+	sort.Strings(other)
+	return strings.Join(append(known, other...), originSeparator)
 }
 
 // Merge combines boms into one. Components with the same ID are joined:
@@ -129,7 +166,7 @@ func ComponentID(kind Kind, name, version, origin string) string {
 // the same inputs always give the same output. The inputs are not changed.
 func Merge(subject string, boms ...BOM) BOM {
 	byID := map[string]Component{}
-	out := BOM{Subject: subject}
+	out := BOM{Subject: subject, Components: []Component{}}
 	for _, bom := range boms {
 		out.Notes = append(out.Notes, bom.Notes...)
 		for _, component := range bom.Components {
@@ -149,18 +186,30 @@ func join(a, b Component) Component {
 		a = Component{ID: b.ID, Kind: b.Kind, Name: b.Name, Version: b.Version, Supplier: b.Supplier, Ecosystem: b.Ecosystem, Origin: b.Origin}
 	}
 	merged := a
+	merged.Origin = JoinOrigins(a.Origin, b.Origin)
+	merged.Supplier = smallestNonEmpty(a.Supplier, b.Supplier)
+	merged.Ecosystem = smallestNonEmpty(a.Ecosystem, b.Ecosystem)
 	merged.Evidence = uniqueEvidence(append(append([]Evidence{}, a.Evidence...), b.Evidence...))
 	merged.Risks = uniqueRisks(append(append([]Risk{}, a.Risks...), b.Risks...))
 	merged.Properties = map[string]string{}
+	// When the scans disagree on a value the smaller wins, so the result
+	// does not depend on the order of the inputs.
 	for _, source := range []map[string]string{a.Properties, b.Properties} {
 		for key, value := range source {
-			merged.Properties[key] = value
+			merged.Properties[key] = smallestNonEmpty(merged.Properties[key], value)
 		}
 	}
 	if len(merged.Properties) == 0 {
 		merged.Properties = nil
 	}
 	return merged
+}
+
+func smallestNonEmpty(a, b string) string {
+	if a == "" || (b != "" && b < a) {
+		return b
+	}
+	return a
 }
 
 func uniqueEvidence(all []Evidence) []Evidence {
@@ -187,21 +236,45 @@ func uniqueEvidence(all []Evidence) []Evidence {
 // uniqueRisks drops exact repeats only. Two scans can raise the same kind of
 // risk about one component for different reasons, and both reasons are kept.
 func uniqueRisks(all []Risk) []Risk {
-	seen := map[Risk]bool{}
+	seen := map[riskKey]bool{}
 	out := []Risk{}
 	for _, r := range all {
-		if !seen[r] {
-			seen[r] = true
+		if k := keyOf(r); !seen[k] {
+			seen[k] = true
 			out = append(out, r)
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
-		if out[i].ID != out[j].ID {
-			return out[i].ID < out[j].ID
+		a, b := keyOf(out[i]), keyOf(out[j])
+		if a.id != b.id {
+			return a.id < b.id
 		}
-		return out[i].Summary < out[j].Summary
+		if a.summary != b.summary {
+			return a.summary < b.summary
+		}
+		if a.where != b.where {
+			return place(a.where) < place(b.where)
+		}
+		return a.severity < b.severity
 	})
 	return out
+}
+
+// riskKey compares risks by value: Where is a pointer, and two risks raised
+// at equal places are the same risk.
+type riskKey struct {
+	id, summary string
+	severity    Severity
+	hasWhere    bool
+	where       Evidence
+}
+
+func keyOf(r Risk) riskKey {
+	k := riskKey{id: r.ID, summary: r.Summary, severity: r.Severity}
+	if r.Where != nil {
+		k.hasWhere, k.where = true, *r.Where
+	}
+	return k
 }
 
 // Sort orders components by kind, then name, version and origin.

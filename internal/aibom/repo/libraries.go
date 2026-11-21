@@ -76,6 +76,9 @@ func (s *scanner) library(f *textFile, dep dependency) {
 		found.risks = []aibom.Risk{risk(riskUnpinnedLibrary)}
 	}
 	s.add(found)
+	if provider, ok := sdkProviders[name]; ok {
+		s.inferProvider(f, dep.line, provider, "the dependency "+name)
+	}
 }
 
 // cleanVersion removes spaces and an exact-pin operator, so "== 1.2" and
