@@ -5,3 +5,17 @@
 *.test
 *.out
 .DS_Store
+
+# Credentials and private material. None of these belong in the repository.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+kubeconfig*
+# Scan inputs and outputs describe real systems: a saved kubectl export can
+# hold literal credential values, and a bill says where keys are used.
+cluster*.json
+ai-bom*
+*.cdx.json
