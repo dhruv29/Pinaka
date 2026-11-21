@@ -1,0 +1,6 @@
+/pinaka
+/first
+/second
+/dist/
+*.test
+*.out

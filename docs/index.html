@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Nothing is loaded from anywhere else, and a bill you open stays in this tab. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Pinaka: what AI are you running?</title>
+  <meta name="description" content="Pinaka reads a repository or a Kubernetes cluster and writes an AI bill of materials: every model, library, provider and agent tool, where it was seen, and what deserves a look.">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <a class="skip" href="#bill">Skip to the bill</a>
+
+  <header class="masthead">
+    <p class="mark" aria-hidden="true">PINAKA</p>
+    <nav aria-label="Page">
+      <a href="#bill">The bill</a>
+      <a href="#how">How it runs</a>
+      <a href="https://github.com/dhruv29/Pinaka" rel="noopener">Source</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="lede" aria-labelledby="lede-heading">
+      <p class="kicker">AI bill of materials</p>
+      <h1 id="lede-heading">What AI are you <em>actually</em> running?</h1>
+      <p class="standfirst">
+        Pinaka reads a repository or a live Kubernetes cluster and writes down every model,
+        AI library, hosted provider, model server and agent tool it finds, with the file or
+        workload it was seen in and the handful that deserve a look first.
+      </p>
+      <pre class="command" aria-label="Example command"><code>pinaka scan -repo . -kube -format json -out ai-bom.json</code></pre>
+      <p class="aside">
+        Below is a sample bill for a made-up company, in the exact format Pinaka writes. Drop your own
+        <code>ai-bom.json</code> anywhere on this page to read it here instead; the file
+        is opened in your browser and goes nowhere.
+      </p>
+    </section>
+
+    <section id="bill" class="bill" aria-labelledby="bill-heading">
+      <header class="bill-head">
+        <div>
+          <p class="kicker">Bill for</p>
+          <h2 id="bill-heading">Loading</h2>
+        </div>
+        <div class="bill-actions">
+          <label class="button" for="file">Open a bill</label>
+          <input id="file" class="visually-hidden" type="file" accept="application/json,.json">
+          <button id="reset" class="button quiet" type="button" hidden>Back to the sample</button>
+        </div>
+      </header>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+
+      <dl id="tally" class="tally" aria-label="Summary"></dl>
+
+      <section class="first" aria-labelledby="first-heading">
+        <h3 id="first-heading">Look at these first</h3>
+        <p class="note">Each is an observation with its reason, not a proven vulnerability.</p>
+        <ol id="risks" class="risks"></ol>
+      </section>
+
+      <section class="inventory" aria-labelledby="inventory-heading">
+        <div class="inventory-head">
+          <h3 id="inventory-heading">Everything found</h3>
+          <div class="filters" role="group" aria-label="Show components from">
+            <button type="button" class="chip" data-origin="all" aria-pressed="true">All</button>
+            <button type="button" class="chip" data-origin="repo" aria-pressed="false">Code</button>
+            <button type="button" class="chip" data-origin="cluster" aria-pressed="false">Cluster</button>
+          </div>
+        </div>
+        <div id="sections"></div>
+      </section>
+
+      <section class="gaps" aria-labelledby="gaps-heading" id="gaps-section" hidden>
+        <h3 id="gaps-heading">Not examined</h3>
+        <p class="note">Pinaka says what it could not see, so a gap is never read as an absence.</p>
+        <ul id="gaps"></ul>
+      </section>
+    </section>
+
+    <section id="how" class="how" aria-labelledby="how-heading">
+      <h2 id="how-heading">How it runs</h2>
+      <ol class="steps">
+        <li>
+          <h3>Nothing goes inside your containers</h3>
+          <p>Pinaka is one small program. Run it on a laptop, in a pipeline, or as a nightly job.</p>
+        </li>
+        <li>
+          <h3>It only reads</h3>
+          <p>A repository scan opens files and makes no network calls. A cluster scan uses only <code>kubectl get</code> and never asks for secrets.</p>
+        </li>
+        <li>
+          <h3>Credentials by name, never value</h3>
+          <p>It tells you that <code>OPENAI_API_KEY</code> is written into a workload in plain text. It does not copy the key.</p>
+        </li>
+        <li>
+          <h3>Output other systems can use</h3>
+          <p>A report for people, Pinaka's own JSON, or a CycloneDX 1.6 document for inventory and compliance tools.</p>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <p>Pinaka is open source under the Apache 2.0 licence. This page loads nothing from other sites.</p>
+  </footer>
+
+  <div id="drop" class="drop" hidden><p>Drop the bill to read it</p></div>
+
+  <script src="sample.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
